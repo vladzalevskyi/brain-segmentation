@@ -1,7 +1,7 @@
 pl_trainer:
-  max_epochs: 100
+  max_epochs: 20
   devices:
-  - 2
+  - 0
   accelerator: gpu
 
 # should match arguments in the BrainPatchesDataModule class
@@ -11,7 +11,7 @@ dataset:
     stride: 32
     img_threshold: 0.5
     normalization: z_score
-    denoiser: False # add functionality to add new channel of rough segmentation
+    denoiser: synthseg # False, synthseg, multi_atlass or syntheseg_multi_atlas
     augmentation: True
 
   train_num_workers: 8
@@ -22,11 +22,11 @@ dataset:
 # should match arguments in the module class
 model:
   n_classes: 4
-  in_channels: 1
+  in_channels: 2
   feature_scale: 4
 
   loss: cross_entropy # dice, cross_entropy, focal, tversky
   lr: 0.001
   model: "UNet_3Plus" # UNet_3Plus, UNet_2Plus or UNet
 
-exp_name: unet3p_augm_bce_64_05
+exp_name: unet3p_augm_bce_64_05_synthseg
