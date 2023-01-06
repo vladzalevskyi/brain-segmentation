@@ -62,6 +62,8 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                  augmentation: bool = False,
                  normalization: str = 'z_score'):
         
+        self.split = split
+        
         if split == 'train':
             self.img_dir = Path('./data/Training_Set').resolve()
         if split == 'val':
@@ -170,7 +172,7 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         img = self.img_patches[idx]
         
-        if self.augmentation:
+        if self.augmentation and self.split == 'train':
             img = utils.min_max_norm(img, 255).astype('uint8')
             # apply augmentations
             transformed = self.transform(image=img,

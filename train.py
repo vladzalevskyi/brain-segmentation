@@ -27,7 +27,7 @@ def main():
     checkpoint_callback = ModelCheckpoint(save_top_k=3,
                                           monitor="valid_dsc_macro_epoch",
                                           mode="max",
-                                          filename="{epoch:02d}-{valid_dsc:.4f}")
+                                          filename="{epoch:02d}-{valid_dsc_macro_epoch:.4f}")
     # enable early stopping (NOT USED RN)
     early_stop_callback = EarlyStopping(monitor="valid_dsc_macro_epoch",
                                         min_delta=0.0001,
@@ -48,6 +48,15 @@ def main():
     # get model and trainer
     model = UNet3(**cfg['model'])
     
+    # save the config file to the output folder
+    # for a given experiment
+    dump_path = Path('./outputs').resolve() / f'{cfg["exp_name"]}'
+    dump_path.mkdir(parents=True, exist_ok=True)
+    dump_path = dump_path/'config_dump.yml'
+    with open(dump_path, 'w') as f:
+        yaml.dump(cfg, f)
+    
+    
     trainer = Trainer(**cfg['pl_trainer'],
                       logger=logger,
                       auto_lr_find=True,
@@ -63,12 +72,5 @@ def main():
     trainer.fit(model=model,
                 datamodule=data_module)
     
-    # save the config file to the output folder
-    # for a given experiment
-    dump_path = Path('./outputs').resolve()
-    dump_path = dump_path / f'{cfg["exp_name"]}/config_dump.yml'
-    with open(dump_path, 'w') as f:
-        yaml.dump_all(cfg, f)
-
 if __name__ == "__main__":
     main()
