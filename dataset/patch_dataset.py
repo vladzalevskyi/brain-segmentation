@@ -9,7 +9,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
 from pytorch_lightning.core import LightningDataModule
 from dataset.roi_extraction import reconstruct_patches, extract_ROIs
-
+import albumentations as A
+import cv2 
 logger = logging.getLogger(__name__)
 
 
@@ -20,10 +21,10 @@ class BrainPatchesDataModule(LightningDataModule):
         if mode=='train':
             
             self.train_dataset = BrainPatchesDataset(split='train',
-                                                     **cfg['dataset'])
+                                                     **cfg['dataset']['patches'])
             
             self.val_dataset = BrainPatchesDataset(split='val',
-                                                     **cfg['dataset'])
+                                                     **cfg['dataset']['patches'])
             logger.info(
                 f'Len of train examples {len(self.train_dataset)}, len of val examples {len(self.val_dataset)}'
             )
@@ -37,18 +38,18 @@ class BrainPatchesDataModule(LightningDataModule):
     def train_dataloader(self):
         train_loader = DataLoader(
             self.train_dataset,
-            batch_size=self.cfg['train_batch_size'],
+            batch_size=self.cfg['dataset']['train_batch_size'],
             shuffle=True,
-            num_workers=self.cfg['train_num_workers'])
+            num_workers=self.cfg['dataset']['train_num_workers'])
 
         return train_loader
 
     def val_dataloader(self):
         val_loader = DataLoader(
             self.val_dataset,
-            batch_size=self.cfg['val_batch_size'],
+            batch_size=self.cfg['dataset']['val_batch_size'],
             shuffle=False,
-            num_workers=self.cfg['val_num_workers'])
+            num_workers=self.cfg['dataset']['val_num_workers'])
         return val_loader
 
 
@@ -57,20 +58,30 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                  window_size: int = 128,
                  stride: int = 64,
                  img_threshold: float = 0.1,
+                 denoiser: bool = False,
+                 augmentation: bool = False,
                  normalization: str = 'z_score'):
         
         if split == 'train':
-            self.img_dir = Path('/home/vzalevskyi/uni/MAIA_Semester_3/misa/final_project/data/Training_Set')
+            self.img_dir = Path('./data/Training_Set').resolve()
         if split == 'val':
-            self.img_dir = Path('/home/vzalevskyi/uni/MAIA_Semester_3/misa/final_project/data/Validation_Set')
+            self.img_dir = Path('./data/Validation_Set').resolve()
         
         self.window_size = window_size
         self.stride = stride
         self.img_threshold = img_threshold
         self.normalization = normalization
-        
+        self.augmentation = augmentation
         self.load_images_patches()
-                
+        
+        self.transform = A.Compose([
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.Rotate(p=0.2,
+                         interpolation=cv2.INTER_NEAREST,
+                         mask_value=0,
+                         border_mode=cv2.BORDER_CONSTANT),
+            ])
     
     def load_images_patches(self):
         self.img_patches = []
@@ -156,7 +167,16 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
         elif self.normalization == 'z_score':
             img = utils.z_score_norm(img, non_zero_region=True)
         
+        if self.augmentation:
+            # apply augmentations
+            transformed = self.transform(image=img,
+                                        mask=self.mask_patches[idx])
+            img = transformed['image'].copy()
+            mask = transformed['mask']
+        else:
+            img = img#transformed['image'].copy()
+            mask = self.mask_patches[idx]#transformed['mask']
         return {'img': torch.Tensor(img),
-                'mask': torch.tensor(self.mask_patches[idx], dtype=torch.long),
+                'mask': torch.tensor(mask, dtype=torch.long),
                 'bbox': self.bbox_coords[idx],
                 'case': self.cases[idx]}
