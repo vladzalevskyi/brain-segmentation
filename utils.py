@@ -29,4 +29,4 @@ def min_max_norm(img: np.ndarray, max_val: int = None):
     if max_val is None:
         max_val = np.iinfo(img.dtype).max
     img = (img - img.min()) / (img.max() - img.min()) * max_val
-    return 
+    return img

@@ -77,10 +77,20 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
         self.transform = A.Compose([
                 A.HorizontalFlip(p=0.5),
                 A.VerticalFlip(p=0.5),
-                A.Rotate(p=0.2,
-                         interpolation=cv2.INTER_NEAREST,
-                         mask_value=0,
-                         border_mode=cv2.BORDER_CONSTANT),
+                A.Rotate(limit=90, p=0.5,
+                         border_mode=cv2.BORDER_CONSTANT,
+                         value=0, interpolation=cv2.INTER_NEAREST),
+                
+                A.GaussianBlur(p=0.2,
+                               blur_limit=3,
+                               sigma_limit=0.8),
+                A.RandomScale(p=0.3,
+                              scale_limit=0.2,
+                              interpolation=cv2.INTER_NEAREST),
+                A.RandomBrightnessContrast(p=0.5,
+                                           brightness_limit=0.1,
+                                           contrast_limit=0.1,
+                                           brightness_by_max=True),
             ])
     
     def load_images_patches(self):
@@ -159,6 +169,17 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         img = self.img_patches[idx]
         
+        if self.augmentation:
+            img = utils.min_max_norm(img, 255).astype('uint8')
+            # apply augmentations
+            transformed = self.transform(image=img,
+                                        mask=self.mask_patches[idx])
+            img = transformed['image'].copy()
+            mask = transformed['mask']
+        else:
+            img = img
+            mask = self.mask_patches[idx]
+            
         # FOR NOW JUST EXPAND DIMS
         # LATER COULD ADD ROUGH SEGM
         img = np.expand_dims(img, axis=0)
@@ -166,16 +187,8 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
             img = utils.min_max_norm(img, 1).astype('float32')
         elif self.normalization == 'z_score':
             img = utils.z_score_norm(img, non_zero_region=True)
+               
         
-        if self.augmentation:
-            # apply augmentations
-            transformed = self.transform(image=img,
-                                        mask=self.mask_patches[idx])
-            img = transformed['image'].copy()
-            mask = transformed['mask']
-        else:
-            img = img#transformed['image'].copy()
-            mask = self.mask_patches[idx]#transformed['mask']
         return {'img': torch.Tensor(img),
                 'mask': torch.tensor(mask, dtype=torch.long),
                 'bbox': self.bbox_coords[idx],
