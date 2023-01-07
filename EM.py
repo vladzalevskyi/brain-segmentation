@@ -95,11 +95,12 @@ class ExpectationMaximization:
             # calculate metrics for progress tracking and update the progress bar
             self._training_data['ll'].append(self.log_likelihood())
 
-            ll_diff = self.ll_difference()
+            ll_diff = self.ll_difference(num_iter=1)
+            print(ll_diff)
             
-            # exit condition
-            if (ll_diff)<tol:
-                break
+            if i != 0:
+                if (ll_diff)<tol:
+                    break
         
         # obtain final segmentation mask
         labels = np.argmax(self.W, axis=1) + 1
@@ -266,7 +267,7 @@ class ExpectationMaximization:
             dict: Dice scores for each tissue
         """
         dice_results = {}
-        names = {1: 'CSF', 2: 'WM', 3: 'GM'}
+        names = {1: 'ds_csf', 2: 'ds_gm', 3: 'ds_wm'}
         for gt, pred in map_dict.items():
             y_true = gt_vol == gt
             y_pred = pred_vol == pred

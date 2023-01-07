@@ -6,6 +6,14 @@ __pycache__/
 # C extensions
 *.so
 
+# dataset folders
+data/
+data.zip
+proc_data/
+proc_data.zip
+unet_results/
+unet_results.zip
+
 # Distribution / packaging
 .Python
 build/
