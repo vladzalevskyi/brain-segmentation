@@ -42,7 +42,8 @@ class BrainSegmenter:
         print('Model loaded')
 
     def segment(self, image: np.ndarray,
-                progress: bool = False) -> np.ndarray:
+                progress: bool = False,
+                ssegm_image=None) -> np.ndarray:
         
         segm_reconstructed = np.zeros_like(image)
         
@@ -55,11 +56,19 @@ class BrainSegmenter:
             image_slices = slice_image(image[slice, :, :],
                                        self.cfg['dataset']['patches']['window_size'],
                                        self.cfg['dataset']['patches']['stride'])
-                        
+            
             # CHANGE IF CHANGE NORMALIZATION OR ADD ANOTHER CHANNEL
             image_slices = [z_score_norm(slice, non_zero_region=True) for slice in image_slices]
             image_slices = np.expand_dims(np.asarray(image_slices, dtype=np.float32), axis=1)
             image_slices = torch.tensor(image_slices, requires_grad=False).to(self.device)
+            
+            if self.cfg['model']['in_channels'] == 2 and ssegm_image is not None:
+                ssegm_slices = slice_image(ssegm_image[slice, :, :],
+                                           self.cfg['dataset']['patches']['window_size'],
+                                           self.cfg['dataset']['patches']['stride'])
+                ssegm_slices = torch.tensor(ssegm_slices, dtype=torch.float).to(self.device)
+                ssegm_slices = ssegm_slices.unsqueeze(1)
+                image_slices = torch.cat((image_slices, ssegm_slices), dim=1)
             
             # predict with the model
             y_hat = self.model(image_slices).detach().cpu().numpy()
@@ -74,9 +83,10 @@ class BrainSegmenter:
     
     def segment_and_compare(self,
                             image: np.ndarray,
-                            mask: np.ndarray):
+                            mask: np.ndarray,
+                            ssegm_image: np.ndarray|None = None):
 
-        mask_pred = self.segment(image, progress=False)
+        mask_pred = self.segment(image, progress=False, ssegm_image=ssegm_image)
         res = ExpectationMaximization.compute_dice(mask, mask_pred,
                                                    map_dict={1:1, 2:2, 3:3})
         res['avg_dice'] = np.mean(list(res.values()))

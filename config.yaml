@@ -11,13 +11,16 @@ dataset:
     stride: 32
     img_threshold: 0.5
     normalization: z_score
-    denoiser: synthseg # False, synthseg, multi_atlass or syntheseg_multi_atlas
+    denoiser: synthseg_merged # False, synthseg or synthseg_merged
+    # False - use 1 channel of original image
+    # synthseg - use as a prior synthseg segmentation with 32 labels as a second channel
+    # synthseg_merged - use as a prior synthseg segmentation with 4 labels as a second channel
     augmentation: True
 
   train_num_workers: 8
-  train_batch_size: 32
+  train_batch_size: 64
   val_num_workers: 8
-  val_batch_size: 32
+  val_batch_size: 64
 
 # should match arguments in the module class
 model:
@@ -29,4 +32,4 @@ model:
   lr: 0.001
   model: "UNet_3Plus" # UNet_3Plus, UNet_2Plus or UNet
 
-exp_name: unet3p_augm_bce_64_05_synthseg_focal
+exp_name: unet3p_augm_focal_64-32_05_synthseg_merged

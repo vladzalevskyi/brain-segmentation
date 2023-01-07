@@ -30,7 +30,7 @@ class BrainPatchesDataModule(LightningDataModule):
             )
         else:
             # TODO: Define test dataset
-            pass
+            raise NotImplementedError('Test dataset is not implemented yet')
             # self.test_dataset = self.DataSet(
             #     cfg.data_dir, split="test", chall=cfg.chall, cfg=cfg)
             # logger.info(f'len of test examples {len(self.test_dataset)}')
@@ -112,9 +112,10 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                 img = sitk.GetArrayFromImage(sitk.ReadImage(str(dir / f'{case}.nii.gz')))
                 segm = sitk.GetArrayFromImage(sitk.ReadImage(str(dir / f'{case}_seg.nii.gz')))
                 
-                if self.denoiser == 'synthseg':
+                if self.denoiser == 'synthseg' or self.denoiser == 'synthseg_merged':
                     ssegm_path = str(dir / f'{case}_seg.nii.gz')
-                    ssegm_path = ssegm_path.replace('seg.nii.gz', 'seg_resampled.nii.gz')
+                    repl_str = 'seg_resampled_merged' if self.denoiser == 'synthseg_merged' else 'seg_resampled'
+                    ssegm_path = ssegm_path.replace('seg.nii.gz', f'{repl_str}.nii.gz')
                     ssegm_path = ssegm_path.replace('data', 'proc_data')
                     ssgegm = sitk.GetArrayFromImage(sitk.ReadImage(ssegm_path))
                     _, ssegm_slices, __ = self.extract_patches(img, ssgegm)
@@ -189,7 +190,7 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                 transformed = self.transform(image=img, mask=mask)
                 
                 mask = transformed['mask']
-            elif self.denoiser == 'synthseg':
+            elif self.denoiser == 'synthseg' or self.denoiser == 'synthseg_merged':
                 transformed = self.transform(image=img,
                                              masks=[mask, self.ssegm_patches[idx]])
                 
@@ -200,7 +201,7 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
 
         else:
             img = img
-            ssegmask = self.ssegm_patches[idx] if self.denoiser == 'synthseg' else None
+            ssegmask = self.ssegm_patches[idx] if self.denoiser == 'synthseg' or self.denoiser == 'synthseg_merged'  else None
         
         return img, mask, ssegmask
         
@@ -222,7 +223,7 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
         mask = torch.tensor(mask, dtype=torch.long)
         
         # add additional channel for synthseg segmentation
-        if self.denoiser == 'synthseg' and ssegmask is not None:
+        if self.denoiser == 'synthseg' or self.denoiser == 'synthseg_merged' and ssegmask is not None:
             ssegmask = torch.tensor(ssegmask, dtype=torch.float)
             img = torch.cat([img, ssegmask.unsqueeze(0)], dim=0)
                 
