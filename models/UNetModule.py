@@ -78,7 +78,8 @@ class UNet3(pl.LightningModule):
         batch_size = len(y)
         y_hat = self.model(x)
         
-        loss = self.criterion(y_hat, y)
+    
+        loss = self.criterion(y_hat, y).mean()
         
         self.log("train_loss", loss, on_step=False,
                  on_epoch=True, prog_bar=True,
@@ -98,7 +99,7 @@ class UNet3(pl.LightningModule):
         batch_size = len(y)
         y_hat = self.model(x)
         
-        loss = self.criterion(y_hat, y)
+        loss = self.criterion(y_hat, y).mean()
         
         self.log("val_loss", loss, on_step=False,
                  on_epoch=True, prog_bar=True,

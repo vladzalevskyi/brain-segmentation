@@ -60,7 +60,8 @@ def main():
     trainer = Trainer(**cfg['pl_trainer'],
                       logger=logger,
                       auto_lr_find=True,
-                      callbacks=[checkpoint_callback])
+                      callbacks=[checkpoint_callback],
+                      )
 
     # # # find optimal learning rate
     # print('Default LR: ', model.learning_rate)
