@@ -63,10 +63,10 @@ def main():
                       callbacks=[checkpoint_callback],
                       )
 
-    # # # find optimal learning rate
-    # print('Default LR: ', model.learning_rate)
-    # trainer.tune(model, datamodule=data_module)
-    # print('Tuned LR: ', model.learning_rate)
+    # # find optimal learning rate
+    print('Default LR: ', model.learning_rate)
+    trainer.tune(model, datamodule=data_module)
+    print('Tuned LR: ', model.learning_rate)
     
     # train model
     print("Training model...")

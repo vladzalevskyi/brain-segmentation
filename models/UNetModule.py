@@ -12,6 +12,7 @@ import torchmetrics
 from matplotlib import pyplot as plt
 import kornia.losses as losses
 import torchvision
+from torch.optim.lr_scheduler import ReduceLROnPlateau, LinearLR
 
 def get_criterions(name: str):
     if name == 'cross_entropy':
@@ -120,6 +121,10 @@ class UNet3(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
-        return optimizer
-
+        sch = ReduceLROnPlateau(optimizer, 'min',
+                                factor=0.2, patience=7)
+         #learning rate scheduler
+        return {"optimizer": optimizer,
+                "lr_scheduler": {"scheduler": sch,
+                                 "monitor":"val_loss"}}
 
