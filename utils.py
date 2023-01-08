@@ -260,3 +260,7 @@ def label_propagation(brain_mask, atlas_list):
     result_discr[brain_mask!=0] = seg
 
     return result_discr, result_prb
+    if max_val is None:
+        max_val = np.iinfo(img.dtype).max
+    img = (img - img.min()) / (img.max() - img.min()) * max_val
+    return img

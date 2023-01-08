@@ -9,7 +9,8 @@ import torchvision.transforms as transforms
 from torch.utils.data import DataLoader, Dataset
 from pytorch_lightning.core import LightningDataModule
 from dataset.roi_extraction import reconstruct_patches, extract_ROIs
-
+import albumentations as A
+import cv2 
 logger = logging.getLogger(__name__)
 
 
@@ -20,10 +21,10 @@ class BrainPatchesDataModule(LightningDataModule):
         if mode=='train':
             
             self.train_dataset = BrainPatchesDataset(split='train',
-                                                     **cfg['dataset'])
+                                                     **cfg['dataset']['patches'])
             
             self.val_dataset = BrainPatchesDataset(split='val',
-                                                     **cfg['dataset'])
+                                                     **cfg['dataset']['patches'])
             logger.info(
                 f'Len of train examples {len(self.train_dataset)}, len of val examples {len(self.val_dataset)}'
             )
@@ -37,18 +38,18 @@ class BrainPatchesDataModule(LightningDataModule):
     def train_dataloader(self):
         train_loader = DataLoader(
             self.train_dataset,
-            batch_size=self.cfg['train_batch_size'],
+            batch_size=self.cfg['dataset']['train_batch_size'],
             shuffle=True,
-            num_workers=self.cfg['train_num_workers'])
+            num_workers=self.cfg['dataset']['train_num_workers'])
 
         return train_loader
 
     def val_dataloader(self):
         val_loader = DataLoader(
             self.val_dataset,
-            batch_size=self.cfg['val_batch_size'],
+            batch_size=self.cfg['dataset']['val_batch_size'],
             shuffle=False,
-            num_workers=self.cfg['val_num_workers'])
+            num_workers=self.cfg['dataset']['val_num_workers'])
         return val_loader
 
 
@@ -57,34 +58,67 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                  window_size: int = 128,
                  stride: int = 64,
                  img_threshold: float = 0.1,
-                 normalization: str = 'z_score'):
+                 denoiser: bool = False,
+                 augmentation: bool = False,
+                 normalization: str = 'z_score',
+                 root_data_path: str = '/home/user0/misa_vlex/brain_segmentation/data'):
+        
+        self.split = split
         
         if split == 'train':
-            self.img_dir = Path('/home/vzalevskyi/uni/MAIA_Semester_3/misa/final_project/data/Training_Set')
+            self.img_dir = Path(f'{root_data_path}/Training_Set').resolve()
         if split == 'val':
-            self.img_dir = Path('/home/vzalevskyi/uni/MAIA_Semester_3/misa/final_project/data/Validation_Set')
-        
+            self.img_dir = Path(f'{root_data_path}/Validation_Set').resolve()
+        self.root_data_path = root_data_path
         self.window_size = window_size
         self.stride = stride
+        self.denoiser = denoiser
         self.img_threshold = img_threshold
         self.normalization = normalization
-        
+        self.augmentation = augmentation
         self.load_images_patches()
+        
+        self.transform = A.Compose([
+                A.HorizontalFlip(p=0.5),
+                A.VerticalFlip(p=0.5),
+                A.Rotate(limit=90, p=0.5,
+                         border_mode=cv2.BORDER_CONSTANT,
+                         value=0, interpolation=cv2.INTER_NEAREST),
                 
+                A.GaussianBlur(p=0.2,
+                               blur_limit=(3,3),
+                               sigma_limit=0.8),
+                A.Downscale(p=0.3,
+                              scale_min=0.8,
+                              scale_max=0.9,
+                              interpolation=cv2.INTER_NEAREST),
+                A.RandomBrightnessContrast(p=0.5,
+                                           brightness_limit=0.1,
+                                           contrast_limit=0.1,
+                                           brightness_by_max=True),
+            ])
     
     def load_images_patches(self):
         self.img_patches = []
         self.mask_patches = []
         self.bbox_coords = []
         self.cases = []
-        
+        self.ssegm_patches = []
         
         for dir in self.img_dir.iterdir():
-            if dir.is_dir():
+            if dir.is_dir() and 'unet' not in dir.name:
                 case = dir.name
                 # read image and mask
                 img = sitk.GetArrayFromImage(sitk.ReadImage(str(dir / f'{case}.nii.gz')))
                 segm = sitk.GetArrayFromImage(sitk.ReadImage(str(dir / f'{case}_seg.nii.gz')))
+                
+                if self.denoiser == 'synthseg':
+                    ssegm_path = str(dir / f'{case}_seg.nii.gz')
+                    ssegm_path = ssegm_path.replace('seg.nii.gz', 'seg_resampled.nii.gz')
+                    ssegm_path = ssegm_path.replace('data', 'proc_data')
+                    ssgegm = sitk.GetArrayFromImage(sitk.ReadImage(ssegm_path))
+                    _, ssegm_slices, __ = self.extract_patches(img, ssgegm)
+                    self.ssegm_patches.extend(ssegm_slices)
                 
                 # store slices per image-case
                 img_slices, mask_slices, bbox_coords = self.extract_patches(img, segm)
@@ -145,18 +179,54 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
     def __len__(self):
         return len(self.img_patches)
 
+    def augment(self, img, mask, idx):
+        ssegmask = None
+        if self.augmentation and self.split == 'train':
+            img = utils.min_max_norm(img, 255).astype('uint8')
+            # apply augmentations
+            
+            if self.denoiser == False:
+                transformed = self.transform(image=img, mask=mask)
+                
+                mask = transformed['mask']
+            elif self.denoiser == 'synthseg':
+                transformed = self.transform(image=img,
+                                             masks=[mask, self.ssegm_patches[idx]])
+                
+                mask, ssegmask = transformed['masks']
+            else:
+                raise ValueError(f'Denoiser type {self.denoiser} not implemented')
+            img = transformed['image'].copy()
+
+        else:
+            img = img
+            ssegmask = self.ssegm_patches[idx] if self.denoiser == 'synthseg' else None
+        
+        return img, mask, ssegmask
+        
     def __getitem__(self, idx):
         img = self.img_patches[idx]
         
-        # FOR NOW JUST EXPAND DIMS
-        # LATER COULD ADD ROUGH SEGM
+        
+        img, mask, ssegmask = self.augment(img, self.mask_patches[idx], idx)
+            
         img = np.expand_dims(img, axis=0)
+        
+        
         if self.normalization == 'min_max':
             img = utils.min_max_norm(img, 1).astype('float32')
         elif self.normalization == 'z_score':
             img = utils.z_score_norm(img, non_zero_region=True)
         
-        return {'img': torch.Tensor(img),
-                'mask': torch.tensor(self.mask_patches[idx], dtype=torch.long),
+        img = torch.Tensor(img)
+        mask = torch.tensor(mask, dtype=torch.long)
+        
+        # add additional channel for synthseg segmentation
+        if self.denoiser == 'synthseg' and ssegmask is not None:
+            ssegmask = torch.tensor(ssegmask, dtype=torch.float)
+            img = torch.cat([img, ssegmask.unsqueeze(0)], dim=0)
+                
+        return {'img': img,
+                'mask': mask,
                 'bbox': self.bbox_coords[idx],
                 'case': self.cases[idx]}

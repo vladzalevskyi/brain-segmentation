@@ -1,5 +1,5 @@
-from sklearnex import patch_sklearn
-patch_sklearn()
+# from sklearnex import patch_sklearn
+# patch_sklearn()
 
 
 import numpy as np

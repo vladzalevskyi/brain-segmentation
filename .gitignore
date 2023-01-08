@@ -135,3 +135,12 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+data/
+outputs/
+
+
+.vscode/
+
+proc_data/
