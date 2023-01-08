@@ -61,14 +61,23 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                  denoiser: bool = False,
                  augmentation: bool = False,
                  normalization: str = 'z_score',
-                 root_data_path: str = '/home/user0/misa_vlex/brain_segmentation/data'):
+                 root_data_path: str = '/home/user0/misa_vlex/brain_segmentation/data',
+                 use_all_data: bool = False):
         
         self.split = split
+        self.use_all_data = use_all_data
         
         if split == 'train':
             self.img_dir = Path(f'{root_data_path}/Training_Set').resolve()
+        
         if split == 'val':
             self.img_dir = Path(f'{root_data_path}/Validation_Set').resolve()
+        
+        # with training and validation set
+        if self.use_all_data:
+            self.img_dir = Path(f'{root_data_path}/FullTrainingSet').resolve()
+
+        
         self.root_data_path = root_data_path
         self.window_size = window_size
         self.stride = stride

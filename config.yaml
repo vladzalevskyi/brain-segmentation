@@ -9,13 +9,14 @@ dataset:
   patches:
     window_size: 64
     stride: 32
-    img_threshold: 0.3
+    img_threshold: 0.5
     normalization: z_score
     denoiser: synthseg_merged # False, synthseg or synthseg_merged
     # False - use 1 channel of original image
     # synthseg - use as a prior synthseg segmentation with 32 labels as a second channel
     # synthseg_merged - use as a prior synthseg segmentation with 4 labels as a second channel
     augmentation: True
+    use_all_data: True # if True uses train + val images for training
 
   train_num_workers: 8
   train_batch_size: 64
@@ -28,7 +29,7 @@ model:
   in_channels: 2
   feature_scale: 4
 
-  loss: tversky # dice, cross_entropy, focal, tversky
+  loss: focal # dice, cross_entropy, focal, tversky
   lr: 0.001
   model: "UNet_3Plus" # UNet_3Plus, UNet_2Plus or UNet
 
