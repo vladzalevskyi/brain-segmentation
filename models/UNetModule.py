@@ -122,7 +122,7 @@ class UNet3(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = optim.Adam(self.parameters(), lr=self.learning_rate)
         sch = ReduceLROnPlateau(optimizer, 'min',
-                                factor=0.2, patience=7)
+                                factor=0.1, patience=10)
          #learning rate scheduler
         return {"optimizer": optimizer,
                 "lr_scheduler": {"scheduler": sch,

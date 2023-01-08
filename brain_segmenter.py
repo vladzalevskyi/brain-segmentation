@@ -17,6 +17,8 @@ import matplotlib.pyplot as plt
 import yaml
 import time
 
+from scipy.stats import mode
+
 class BrainSegmenter:
     def __init__(self, model_checkpoint_path: Path,
                  device: str = 'cuda:2'):
@@ -57,7 +59,6 @@ class BrainSegmenter:
                                        self.cfg['dataset']['patches']['window_size'],
                                        self.cfg['dataset']['patches']['stride'])
             
-            # CHANGE IF CHANGE NORMALIZATION OR ADD ANOTHER CHANNEL
             image_slices = [z_score_norm(slice, non_zero_region=True) for slice in image_slices]
             image_slices = np.expand_dims(np.asarray(image_slices, dtype=np.float32), axis=1)
             image_slices = torch.tensor(image_slices, requires_grad=False).to(self.device)
@@ -84,10 +85,48 @@ class BrainSegmenter:
     def segment_and_compare(self,
                             image: np.ndarray,
                             mask: np.ndarray,
-                            ssegm_image: np.ndarray|None = None):
-
-        mask_pred = self.segment(image, progress=False, ssegm_image=ssegm_image)
+                            ssegm_image: np.ndarray|None = None,
+                            ensemble: bool=False):
+        if ensemble:
+            mask_pred = self.segment_ensemble(image, progress=False, ssegm_image_xyz=ssegm_image)
+        else:
+            mask_pred = self.segment(image, progress=False, ssegm_image=ssegm_image)
+        
         res = ExpectationMaximization.compute_dice(mask, mask_pred,
                                                    map_dict={1:1, 2:2, 3:3})
+        
         res['avg_dice'] = np.mean(list(res.values()))
+        
         return mask_pred, res
+    
+    def segment_ensemble(self, img_xyz: np.ndarray,
+                         progress: bool = False,
+                         ssegm_image_xyz=None) -> np.ndarray:
+        
+        # rearrange axes with numpy
+        img_yzx = np.transpose(img_xyz, (1, 2, 0))
+        img_zxy = np.transpose(img_xyz, (2, 0, 1))
+        
+        if ssegm_image_xyz is not None:
+            ssegm_yzx = np.transpose(ssegm_image_xyz, (1, 2, 0))
+            ssegm_zxy = np.transpose(ssegm_image_xyz, (2, 0, 1))
+        else:
+            ssegm_yzx = None
+            ssegm_zxy = None
+        
+        pred_xyz = self.segment(img_xyz,
+                                progress=progress,
+                                ssegm_image=ssegm_image_xyz)
+        pred_yzx = self.segment(img_yzx,
+                                progress=progress,
+                                ssegm_image=ssegm_yzx)
+        pred_zxy = self.segment(img_zxy,
+                                progress=progress,
+                                ssegm_image=ssegm_zxy)
+        
+        pred_xyz2 = np.transpose(pred_yzx, (2, 0, 1))
+        pred_xyz3 = np.transpose(pred_zxy, (1, 2, 0))
+        
+        ens_pred = np.stack((pred_xyz, pred_xyz2, pred_xyz3), axis=0)
+        final_pred, _ = mode(ens_pred, axis=0, keepdims=False)
+        return final_pred

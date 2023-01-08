@@ -1,7 +1,7 @@
 pl_trainer:
-  max_epochs: 100
+  max_epochs: 120
   devices:
-  - 0
+  - 2
   accelerator: gpu
 
 # should match arguments in the BrainPatchesDataModule class
@@ -33,4 +33,4 @@ model:
   lr: 0.001
   model: "UNet_3Plus" # UNet_3Plus, UNet_2Plus or UNet
 
-exp_name: unet3p_augm_tversky_64-32_03_synthseg_merged_lrsch
+exp_name: unet3p_augm_focal_64-32_05_synthseg_merged_lrsch_fullset
