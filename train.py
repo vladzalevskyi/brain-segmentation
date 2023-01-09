@@ -24,7 +24,7 @@ def main():
         cfg = list(yaml.load_all(f, yaml.SafeLoader))[0]
 
     # saves top-K checkpoints based on "valid_dsc" metric
-    checkpoint_callback = ModelCheckpoint(save_top_k=3,
+    checkpoint_callback = ModelCheckpoint(save_top_k=5,
                                           monitor="valid_dsc_macro_epoch",
                                           mode="max",
                                           filename="{epoch:02d}-{valid_dsc_macro_epoch:.4f}")
@@ -63,10 +63,10 @@ def main():
                       callbacks=[checkpoint_callback],
                       )
 
-    # # # find optimal learning rate
-    # print('Default LR: ', model.learning_rate)
-    # trainer.tune(model, datamodule=data_module)
-    # print('Tuned LR: ', model.learning_rate)
+    # # find optimal learning rate
+    print('Default LR: ', model.learning_rate)
+    trainer.tune(model, datamodule=data_module)
+    print('Tuned LR: ', model.learning_rate)
     
     # train model
     print("Training model...")

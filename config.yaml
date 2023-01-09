@@ -1,5 +1,5 @@
 pl_trainer:
-  max_epochs: 100
+  max_epochs: 120
   devices:
   - 2
   accelerator: gpu
@@ -16,6 +16,7 @@ dataset:
     # synthseg - use as a prior synthseg segmentation with 32 labels as a second channel
     # synthseg_merged - use as a prior synthseg segmentation with 4 labels as a second channel
     augmentation: True
+    use_all_data: True # if True uses train + val images for training
 
   train_num_workers: 8
   train_batch_size: 64
@@ -32,4 +33,4 @@ model:
   lr: 0.001
   model: "UNet_3Plus" # UNet_3Plus, UNet_2Plus or UNet
 
-exp_name: unet3p_augm_focal_64-32_05_synthseg_merged
+exp_name: unet3p_augm_focal_64-32_05_synthseg_merged_lrsch_fullset

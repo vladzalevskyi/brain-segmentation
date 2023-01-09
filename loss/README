@@ -1,0 +1,7 @@
+Losses implementation taken from the following repositories:
+https://github.com/ZJUGiveLab/UNet-Version
+
+and based on the following paper:
+UNet 3+: A Full-Scale Connected UNet for Medical Image SegmentationPDF
+Huimin Huang, Lanfen Lin et al.
+ICASSP, IEEE International Conference on Acoustics, Speech and Signal Processing

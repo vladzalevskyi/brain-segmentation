@@ -61,14 +61,22 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                  denoiser: bool = False,
                  augmentation: bool = False,
                  normalization: str = 'z_score',
-                 root_data_path: str = '/home/user0/misa_vlex/brain_segmentation/data'):
+                 root_data_path: str = '/home/user0/misa_vlex/brain_segmentation/data',
+                 use_all_data: bool = False):
         
         self.split = split
+        self.use_all_data = use_all_data
         
         if split == 'train':
             self.img_dir = Path(f'{root_data_path}/Training_Set').resolve()
+
+        # with training and validation set
+        if self.use_all_data:
+            self.img_dir = Path(f'{root_data_path}/FullTrainingSet').resolve()
+        
         if split == 'val':
             self.img_dir = Path(f'{root_data_path}/Validation_Set').resolve()
+        
         self.root_data_path = root_data_path
         self.window_size = window_size
         self.stride = stride
@@ -117,6 +125,12 @@ class BrainPatchesDataset(torch.utils.data.Dataset):
                     repl_str = 'seg_resampled_merged' if self.denoiser == 'synthseg_merged' else 'seg_resampled'
                     ssegm_path = ssegm_path.replace('seg.nii.gz', f'{repl_str}.nii.gz')
                     ssegm_path = ssegm_path.replace('data', 'proc_data')
+                    
+                    if Path(str(ssegm_path).replace('FullTrainingSet', 'Training_Set')).exists():
+                        ssegm_path = str(ssegm_path).replace('FullTrainingSet', 'Training_Set')
+                    elif Path(str(ssegm_path).replace('FullTrainingSet', 'Validation_Set')).exists():
+                        ssegm_path = str(ssegm_path).replace('FullTrainingSet', 'Validation_Set')
+                    
                     ssgegm = sitk.GetArrayFromImage(sitk.ReadImage(ssegm_path))
                     _, ssegm_slices, __ = self.extract_patches(img, ssgegm)
                     self.ssegm_patches.extend(ssegm_slices)
