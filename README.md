@@ -6,8 +6,8 @@ This repository contrains source code and the report for the Brain Segmentation 
 | *Images from the IBSR18 dataset grouped by resolution* |
 
 **Proposed solution reached average dice of 0.937 for the best U-Net model, while also reaching an average dice of 0.828 with just SynthSeg segmentations and  an average dice of 0.778 for the best multi-atlas combination strategy.**
-<center> <h3> <a href=MISA Final Project.pdf>Link to the Report </a></h3></center>
 
+[Link to the report](MISA_Final_Project.pdf)
 ___
 ## Authors
 Alejandro Cortina Uribe [github](https://github.com/alexCortinaU) | [linkedin](https://www.linkedin.com/in/acortinau/)
