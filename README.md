@@ -21,22 +21,21 @@ ___
 
 ## Repository structure
 
-### `notebooks/` - contains the notebooks used for the project
+* `notebooks/` - contains the notebooks used for the project
 
 
-Please refer to [PreprocessRegisterData](notebooks/0_PreprocessRegisterData.ipynb) notebook to see details of the pre-preprocessing and registration steps performed before multi-atlas segmentation.
+    * Please refer to [PreprocessRegisterData](notebooks/0_PreprocessRegisterData.ipynb) notebook to see details of the pre-preprocessing and registration steps performed before multi-atlas segmentation.
 
-And to [MultiAtlasSegmentation](notebooks/1_MultiAtlasSegmentation.ipynb) notebook to see the implementation of the multi-atlas segmentation algorithm with different weights.
+    * And to [MultiAtlasSegmentation](notebooks/1_MultiAtlasSegmentation.ipynb) notebook to see the implementation of the multi-atlas segmentation algorithm with different weights.
 
+ * `datasets/` - contains the dataset class and utils used to load and preprocess the data
+    * [patch_dataset.py](datasets/patch_dataset.py) - contains the dataset class used to load and preprocess the data based in Pytorch Dataset and LightningDataModule classes.
 
-### `datasets/` - contains the dataset class and utils used to load and preprocess the data
-[patch_dataset.py](datasets/patch_dataset.py) - contains the dataset class used to load and preprocess the data based in Pytorch Dataset and LightningDataModule classes.
+* `models/` - contains the source code for the models
+    * [UNetModel.py](models/UNetModel.py) - contains the source code for the 2D U-Net model written based on the Lightning class.
 
-### `models/` - contains the source code for the models
-[UNetModel.py](models/UNetModel.py) - contains the source code for the 2D U-Net model written based on the Lightning class.
+*  `train.py` - main script used to train the models
 
-### `train.py` - main script used to train the models
+* `brain_segmenter.py` - contains the source code for the brain segmenter class that allows direct segmentation of the images using the trained models (deals with patch slicing and reconstruction as well as the model inference and simple ensembling)
 
-### `brain_segmenter.py` - contains the source code for the brain segmenter class that allows direct segmentation of the images using the trained models (deals with patch slicing and reconstruction as well as the model inference and simple ensembling)
-
-### `config.py` - contains the configuration parameters for the project (paths, hyperparameters, etc.)
+* `config.py` - contains the configuration parameters for the project (paths, hyperparameters, etc.)
